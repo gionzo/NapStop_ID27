@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NapStop</title>
     <style>
-        /* dimensioni per la mappa */
+        
         #map {
             height: 600px;
             width: 100%;
@@ -16,69 +16,137 @@
             font-family: Arial, sans-serif;
             margin: 20px;
             background-color: #f4f4f9;
+            position: relative; 
+            min-height: 100vh;
+        }
+
+        
+        .logo-angolo {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 5px;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .logo-angolo img {
+            max-width: 200px;
+            height: auto;
+            display: block;
+        }
+
+        
+        .popup-content {
+            padding: 5px;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .nome-fermata {
+            font-weight: bold;
+            font-size: 15px;
+            color: #333;
+            margin: 0;
+            display: block;
+        }
+
+        .btn-prenota {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: block;
+            margin: 10px 0 0 0;
+            width: 100%;
+        }
+        .btn-prenota:hover {
+            background-color: #218838;
         }
     </style>
 </head>
 <body>
 
     <h1>NapStop, implementazione visuale mappa con api google</h1>
+    
     <div id="map">Caricamento mappa in corso...</div>
 
+    <div class="logo-angolo">
+        <img src="logo_napstop.png" alt="Logo NapStop">
+    </div>
+
     <script>
-        // Chiediamo la chiave API salvata in .env al nostro server Node.js
-        fetch('/api-config')
-            .then(response => response.json())
-            .then(config => {
-                caricaScriptGoogleMaps(config.apiKey);
-            });
-
-        // Iniettiamo lo script di Google dinamicamente nella pagina
-        function caricaScriptGoogleMaps(apiKey) {
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
-        }
-
-        // Questa funzione viene chiamata automaticamente da Google quando la mappa è pronta
         function initMap() {
-            const coordinateTrento = { lat: 46.0674, lng: 11.1267 }; //inizializiamo la mappa con le coordinate di Trento
+            const coordinateTrento = { lat: 46.0674, lng: 11.1267 };
             
             const mappa = new google.maps.Map(document.getElementById("map"), {
                 zoom: 12,
                 center: coordinateTrento,
                 streetViewControl: false,
                 styles: [
-            {
-                // 1. Nascondi tutti i punti di interesse generici (negozi, monumenti, hotel, ecc.)
-                featureType: "poi",
-                elementType: "all",
-                stylers: [{ visibility: "off" }]
-            },
-            {
-                // 2. Mantieni visibili (ed evidenzia) le stazioni e fermate dei trasporti pubblici
-                featureType: "transit.station",
-                elementType: "all",
-                stylers: [
-                    { visibility: "on" },
-                    { weight: 2 } // Rende le icone leggermente più marcate
+                    { featureType: "poi", elementType: "all", stylers: [{ visibility: "off" }] },
+                    { featureType: "transit.station", elementType: "all", stylers: [{ visibility: "on" }, { weight: 2 }] },
+                    { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#ffc107" }] }
                 ]
-            },
-            {
-                // 3. Puoi anche cambiare colore specificatamente alle linee dei treni/autobus se vuoi
-                featureType: "transit.line",
-                elementType: "geometry",
-                stylers: [{ color: "#ffc107" }] // Colore giallo per le linee di transito
-            }
-        ]
             });
 
-            new google.maps.Marker({
-                position: coordinateTrento,
-                map: mappa,
-                title: "Benvenuto a Trento!"
+           
+
+            const infoWindow = new google.maps.InfoWindow();
+            const service = new google.maps.places.PlacesService(mappa);
+
+            mappa.addListener("click", function(e) {
+                if (e.placeId) {
+                    e.stop();
+
+                    service.getDetails({
+                        placeId: e.placeId,
+                        fields: ['name']
+                    }, function(place, status) {
+                        
+                        console.log("Stato risposta Google Places:", status);
+
+                        let nomeFermata = "Fermata Selezionata";
+                        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+                            nomeFermata = place.name;
+                        }
+
+                        const contenutoPopup = `
+                            <div class="popup-content">
+                                <span class="nome-fermata">${nomeFermata}</span>
+                                <button class="btn-prenota" onclick="console.log('Prenotata la fermata: ${nomeFermata.replace(/'/g, "\\'")}');">
+                                    prenota fermata e inizia il viaggio
+                                </button>
+                            </div>
+                        `;
+
+                        infoWindow.setContent(contenutoPopup);
+                        infoWindow.setPosition(e.latLng);
+                        infoWindow.open(mappa);
+                    });
+                }
             });
+        }
+
+        fetch('/api-config')
+            .then(response => response.json())
+            .then(config => {
+                caricaScriptGoogleMaps(config.apiKey);
+            });
+
+        function caricaScriptGoogleMaps(apiKey) {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
         }
     </script>
 </body>
