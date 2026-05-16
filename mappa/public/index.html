@@ -48,6 +48,30 @@
             const mappa = new google.maps.Map(document.getElementById("map"), {
                 zoom: 12,
                 center: coordinateTrento,
+                streetViewControl: false,
+                styles: [
+            {
+                // 1. Nascondi tutti i punti di interesse generici (negozi, monumenti, hotel, ecc.)
+                featureType: "poi",
+                elementType: "all",
+                stylers: [{ visibility: "off" }]
+            },
+            {
+                // 2. Mantieni visibili (ed evidenzia) le stazioni e fermate dei trasporti pubblici
+                featureType: "transit.station",
+                elementType: "all",
+                stylers: [
+                    { visibility: "on" },
+                    { weight: 2 } // Rende le icone leggermente più marcate
+                ]
+            },
+            {
+                // 3. Puoi anche cambiare colore specificatamente alle linee dei treni/autobus se vuoi
+                featureType: "transit.line",
+                elementType: "geometry",
+                stylers: [{ color: "#ffc107" }] // Colore giallo per le linee di transito
+            }
+        ]
             });
 
             new google.maps.Marker({
