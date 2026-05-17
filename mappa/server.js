@@ -7,13 +7,15 @@ import jwt from 'jsonwebtoken';
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Permette al server di leggere i dati JSON inviati dal frontend
 app.use(express.json());
 
+// Configura Express per leggere i file statici da una cartella chiamata "public" (html)
 app.use(express.static('public'));
 
-
+// ==========================================
 // DB CONFIGURATION & MODELS (MongoDB)
-
+// ==========================================
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/napstop';
 mongoose.connect(mongoUri)
   .then(() => console.log('Connesso con successo a MongoDB!'))
@@ -37,9 +39,9 @@ const viaggioSchema = new mongoose.Schema({
 });
 const Viaggio = mongoose.model('Viaggio', viaggioSchema);
 
-
+// ==========================================
 // MIDDLEWARE DI AUTENTICAZIONE (JWT)
-
+// ==========================================
 function autenticaToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -57,8 +59,11 @@ function autenticaToken(req, res, next) {
   });
 }
 
+// ==========================================
 // ROTTE API
+// ==========================================
 
+// 1. Registrazione (Sign Up)
 app.post('/api/signup', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -66,17 +71,14 @@ app.post('/api/signup', async (req, res) => {
       return res.status(400).json({ errore: 'Email e password sono obbligatorie.' });
     }
 
-    // Controlla se l'utente esiste già
     const utenteEsistente = await User.findOne({ email });
     if (utenteEsistente) {
       return res.status(400).json({ errore: 'Questa email è già registrata.' });
     }
 
-    // Cripta la password
     const salt = await bcrypt.genSalt(10);
     const passwordCriptata = await bcrypt.hash(password, salt);
 
-    // Salva nel DB
     const nuovoUtente = new User({ email, password: passwordCriptata });
     await nuovoUtente.save();
 
@@ -87,7 +89,7 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
-
+// 2. Accesso (Log In)
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -95,19 +97,16 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ errore: 'Inserisci email e password.' });
     }
 
-    // Cerca l'utente
     const utente = await User.findOne({ email });
     if (!utente) {
       return res.status(400).json({ errore: 'Email o password errate.' });
     }
 
-    // Controlla la password
     const passwordValida = await bcrypt.compare(password, utente.password);
     if (!passwordValida) {
       return res.status(400).json({ errore: 'Email o password errate.' });
     }
 
-    // Genera il Token JWT valido per 24 ore
     const token = jwt.sign({ userId: utente._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
     res.json({ messaggio: 'Login effettuato con successo!', token });
@@ -117,12 +116,13 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// 3. Salvataggio Nuovo Viaggio (Protetta da Token)
 app.post('/api/viaggi', autenticaToken, async (req, res) => {
   try {
     const { destinazione, mezzo, raggio, notifica } = req.body;
 
     const nuovoViaggio = new Viaggio({
-      utenteId: req.userId, // Preso in automatico dal token JWT decodificato
+      utenteId: req.userId, 
       destinazione,
       mezzo,
       raggio,
@@ -137,6 +137,19 @@ app.post('/api/viaggi', autenticaToken, async (req, res) => {
   }
 });
 
+// --- NUOVO: 4. Recupero Cronologia Viaggi dell'utente loggato (Protetta da Token) ---
+app.get('/api/viaggi', autenticaToken, async (req, res) => {
+  try {
+    // Trova tutti i viaggi legati all'ID dell'utente loggato estratti dal token JWT ordinati dai più recenti
+    const viaggi = await Viaggio.find({ utenteId: req.userId }).sort({ dataCreazione: -1 });
+    res.json(viaggi);
+  } catch (error) {
+    console.error('Errore recupero cronologia:', error);
+    res.status(500).json({ errore: 'Impossibile recuperare la cronologia dei viaggi.' });
+  }
+});
+
+// Rotta per inviare la chiave API al frontend
 app.get('/api-config', (req, res) => {
   res.json({ apiKey: process.env.GOOGLE_MAPS_API_KEY });
 });
