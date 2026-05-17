@@ -107,7 +107,6 @@
             background-color: #218838;
         }
 
-
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -275,6 +274,59 @@
         .btn-cancella-viaggio:hover {
             background-color: #bd2130;
         }
+
+        /* Nuovi Stili per la sezione Cronologia */
+        .btn-cronologia-toggle {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        .btn-cronologia-toggle:hover {
+            background-color: #5a6268;
+        }
+        .panel-cronologia {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 15px;
+            display: none;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .panel-cronologia.active {
+            display: block;
+        }
+        .panel-cronologia h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+            padding-bottom: 8px;
+        }
+        .cronologia-lista {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .cronologia-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #495057;
+        }
     </style>
 </head>
 <body>
@@ -294,6 +346,13 @@
     <h1>NapStop, implementazione visuale mappa con api google</h1>
     
     <div id="map">Caricamento mappa in corso...</div>
+
+    <button class="btn-cronologia-toggle" id="btnToggleCronologia" onclick="toggleCronologia()">Mostra Cronologia Viaggi</button>
+    
+    <div class="panel-cronologia" id="panelCronologia">
+        <h2>La tua Cronologia Viaggi</h2>
+        <div id="cronologiaContenuto">Nessun viaggio caricato.</div>
+    </div>
 
     <div class="logo-angolo">
         <img src="logo_napstop.png" alt="Logo NapStop">
@@ -348,10 +407,10 @@
         let isViaggioAttivo = false; 
 
         window.onload = function() {
-
             if (localStorage.getItem('token')) {
                 document.getElementById('authScreen').style.display = 'none';
                 ottieniConfigurazioneEAvviaMappa();
+                caricaCronologia(); // Carica la cronologia subito se l'utente è già loggato
             }
         }
 
@@ -399,6 +458,7 @@
                     localStorage.setItem('token', data.token);
                     document.getElementById('authScreen').style.display = 'none';
                     ottieniConfigurazioneEAvviaMappa();
+                    caricaCronologia(); // Carica la cronologia dopo un login avvenuto con successo
                 } else {
                     alert("Registrazione completata! Ora effettua l'accesso.");
                     cambiaModalitaAuth();
@@ -605,7 +665,6 @@
             .then(data => {
                 console.log("Successo:", data.messaggio);
                 
-            
                 isViaggioAttivo = true;
                 
                 const contenutowidget = `
@@ -618,6 +677,7 @@
                 document.getElementById('widgetViaggio').classList.add('active');
 
                 chiudiModal();
+                caricaCronologia(); // Aggiorna istantaneamente la lista della cronologia a schermo
             })
             .catch(errore => {
                 console.error(errore);
@@ -625,17 +685,76 @@
             });
         }
 
-        
         function cancellaViaggio() {
             if (confirm("Sei sicuro di voler cancellare il viaggio attualmente attivo?")) {
-                // Sblocca i clic sulla mappa
                 isViaggioAttivo = false;
                 fermataCorrente = "";
-                
                 
                 document.getElementById('widgetViaggio').classList.remove('active');
                 document.getElementById('widgetDati').innerHTML = "";
             }
+        }
+
+        /* Nuove Funzioni per la Gestione della Cronologia (GET /api/viaggi) */
+        function toggleCronologia() {
+            const panel = document.getElementById('panelCronologia');
+            const btn = document.getElementById('btnToggleCronologia');
+            
+            panel.classList.toggle('active');
+            
+            if (panel.classList.contains('active')) {
+                btn.innerText = "Nascondi Cronologia Viaggi";
+                caricaCronologia();
+            } else {
+                btn.innerText = "Mostra Cronologia Viaggi";
+            }
+        }
+
+        function caricaCronologia() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const contenitore = document.getElementById('cronologiaContenuto');
+
+            fetch('/api/viaggi', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Errore nel recupero della cronologia.");
+                return res.json();
+            })
+            .then(viaggi => {
+                if (!viaggi || viaggi.length === 0) {
+                    contenitore.innerHTML = "<p>Nessun viaggio salvato in cronologia.</p>";
+                    return;
+                }
+
+                // Invertiamo l'ordine per visualizzare prima i viaggi più recenti
+                let listaHtml = '<ul class="cronologia-lista">';
+                viaggi.reverse().forEach(v => {
+                    const labelMezzo = v.mezzo === 'treno_regionale' ? 'Treno Regionale' : (v.mezzo === 'alta_velocita' ? 'Treno ad Alta Velocità' : 'Autobus');
+                    const labelNotifica = v.notifica === 'suoneria' ? 'Suoneria Forte' : 'Solo Vibrazione';
+                    const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
+
+                    listaHtml += `
+                        <li class="cronologia-item">
+                            <strong>Destinazione:</strong> ${v.destinazione}<br>
+                            <strong>Mezzo:</strong> ${labelMezzo} | 
+                            <strong>Raggio:</strong> ${labelRaggio} | 
+                            <strong>Sveglia:</strong> ${labelNotifica}
+                        </li>
+                    `;
+                });
+                listaHtml += '</ul>';
+                contenitore.innerHTML = listaHtml;
+            })
+            .catch(err => {
+                console.error("Errore nel caricamento della cronologia:", err);
+                contenitore.innerHTML = "<p style='color: red;'>Impossibile caricare la cronologia in questo momento.</p>";
+            });
         }
 
         document.getElementById('modalConfigurazione').addEventListener('click', function(e) {
