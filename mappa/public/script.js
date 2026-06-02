@@ -1,5 +1,8 @@
 let infoWindow; 
 let fermataCorrente = ""; 
+let latCorrente = null;
+let lngCorrente = null;
+
 let isLoginMode = true;
 let isViaggioAttivo = false; 
 let viaggiCaricati = []; 
@@ -109,6 +112,9 @@ function initMap() {
         if (e.placeId) {
             e.stop();
 
+            const lat = e.latLng.lat();
+            const lng = e.latLng.lng();
+
             service.getDetails({
                 placeId: e.placeId,
                 fields: ['name']
@@ -122,13 +128,13 @@ function initMap() {
                 const contenutoPopup = `
                     <div class="popup-content">
                         <span class="nome-fermata">${nomeFermata}</span>
-                        <button class="btn-prenota" onclick="apriModal('${nomeFermata.replace(/'/g, "\\'")}')">
+                        <button class="btn-prenota" onclick="apriModal('${nomeFermata.replace(/'/g, "\\'")}', ${lat}, ${lng})">
                             prenota fermata e inizia il viaggio
                         </button>
                     </div>
                 `;
 
-                infoWindow.setContent(contenutoPopup);
+                infoWindow.setContent(contenidoPopup);
                 infoWindow.setPosition(e.latLng);
                 infoWindow.open(mappa);
             });
@@ -136,8 +142,11 @@ function initMap() {
     });
 }
 
-function apriModal(nomeFermata) {
+function apriModal(nomeFermata, lat, lng) {
     fermataCorrente = nomeFermata; 
+    latCorrente = lat;
+    lngCorrente = lng;
+
     if(infoWindow) infoWindow.close(); 
     
     document.getElementById('select-mezzo').value = "";
@@ -242,9 +251,12 @@ function confermaViaggio() {
 
     const datiViaggio = {
         destinazione: fermataCorrente,
+        lat: latCorrente,
+        lng: lngCorrente,
         mezzo: valoreMezzo,
         raggio: valoreRaggio,
-        notifica: valoreNotifica
+        notifica: valoreNotifica,
+        preferito: false
     };
 
     fetch('/api/viaggi', {
@@ -262,8 +274,6 @@ function confermaViaggio() {
         return response.json();
     })
     .then(data => {
-        console.log("Successo:", data.messaggio);
-        
         isViaggioAttivo = true;
         
         const contenutowidget = `
@@ -288,12 +298,13 @@ function cancellaViaggio() {
     if (confirm("Sei sicuro di voler cancellare il viaggio attualmente attivo?")) {
         isViaggioAttivo = false;
         fermataCorrente = "";
+        latCorrente = null;
+        lngCorrente = null;
         
         document.getElementById('widgetViaggio').classList.remove('active');
         document.getElementById('widgetDati').innerHTML = "";
     }
 }
-
 
 function toggleCronologia() {
     const panel = document.getElementById('panelCronologia');
@@ -308,7 +319,6 @@ function toggleCronologia() {
         btn.innerText = "Mostra Cronologia Viaggi";
     }
 }
-
 
 function togglePreferiti() {
     const panel = document.getElementById('panelPreferiti');
@@ -336,16 +346,23 @@ function caricaCronologia() {
         }
     })
     .then(res => {
+        if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('token');
+            document.getElementById('authScreen').style.display = 'flex';
+            throw new Error("Sessione non valida. Effettua di nuovo l'accesso.");
+        }
         if (!res.ok) throw new Error("Errore nel recupero della cronologia.");
         return res.json();
     })
     .then(viaggi => {
         if (!viaggi || viaggi.length === 0) {
             contenitore.innerHTML = "<p>Nessun viaggio salvato in cronologia.</p>";
+            document.getElementById('preferitiContenuto').innerHTML = "<p>Nessun viaggio tra i preferiti.</p>";
             return;
         }
 
-        viaggiCaricati = viajes = viaggi.reverse();
+        viaggiCaricati = viaggi; 
+        preferiti = viaggiCaricati.filter(v => v.preferito === true);
 
         let listaHtml = '<ul class="cronologia-lista">';
         viaggiCaricati.forEach(v => {
@@ -353,8 +370,7 @@ function caricaCronologia() {
             const labelNotifica = v.notifica === 'suoneria' ? 'Suoneria Forte' : 'Solo Vibrazione';
             const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
 
-            const giaPreferito = preferiti.some(p => p._id === v._id);
-            const classeStellina = giaPreferito ? 'stellina attiva' : 'stellina';
+            const classeStellina = v.preferito ? 'stellina attiva' : 'stellina';
 
             listaHtml += `
                 <li class="cronologia-item">
@@ -377,20 +393,45 @@ function caricaCronologia() {
 }
 
 function togglePreferito(elementoStellina, viaggioId) {
-    elementoStellina.classList.toggle('attiva');
-    
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
     const viaggio = viaggiCaricati.find(v => v._id === viaggioId);
     if (!viaggio) return;
 
-    const index = preferiti.findIndex(p => p._id === viaggioId);
-    
-    if (index === -1) {
-        preferiti.push(viaggio);
-    } else {
-        preferiti.splice(index, 1);
-    }
-    
-    aggiornaGraficaPreferiti();
+    const nuovoStatoPreferito = !viaggio.preferito;
+
+    fetch(`/api/viaggi/${viaggioId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ preferito: nuovoStatoPreferito })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Impossibile salvare lo stato preferito nel database.");
+        return res.json();
+    })
+    .then(data => {
+        viaggio.preferito = nuovoStatoPreferito;
+        elementoStellina.classList.toggle('attiva');
+
+        if (nuovoStatoPreferito) {
+            if (!preferiti.some(p => p._id === viaggioId)) {
+                preferiti.push(viaggio);
+            }
+        } else {
+            const index = preferiti.findIndex(p => p._id === viaggioId);
+            if (index !== -1) preferiti.splice(index, 1);
+        }
+        
+        aggiornaGraficaPreferiti();
+    })
+    .catch(err => {
+        console.error("Errore aggiornamento preferito:", err);
+        alert("Errore di sincronizzazione con il database. Riprova.");
+    });
 }
 
 function aggiornaGraficaPreferiti() {
@@ -432,4 +473,9 @@ function caricaScriptGoogleMaps(apiKey) {
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
+}
+
+function logout() {
+    localStorage.removeItem('token'); 
+    location.reload(); 
 }
