@@ -5,6 +5,8 @@ let latCorrente = null;
 let lngCorrente = null;
 let cerchioSveglia = null;
 let markerFermataSelezionata = null;
+let markerPosizioneUtente = null;
+let idTracciamentoPosizione = null;
 
 let isLoginMode = true;
 let isViaggioAttivo = false; 
@@ -141,6 +143,51 @@ function initMap() {
             });
         }
     });
+
+    avviaTracciamentoPosizioneNativo();
+}
+
+function avviaTracciamentoPosizioneNativo() {
+    if (navigator.geolocation) {
+        idTracciamentoPosizione = navigator.geolocation.watchPosition(
+            function(position) {
+                const posUtente = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+
+                if (markerPosizioneUtente) {
+                    markerPosizioneUtente.setPosition(posUtente);
+                } else {
+                    markerPosizioneUtente = new google.maps.Marker({
+                        position: posUtente,
+                        map: mappa,
+                        title: "La tua posizione attuale",
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 8,
+                            fillColor: "#007bff",
+                            fillOpacity: 1,
+                            strokeColor: "#ffffff",
+                            strokeWeight: 2
+                        }
+                    });
+                    
+                    if (!isViaggioAttivo) {
+                        mappa.setCenter(posUtente);
+                    }
+                }
+            },
+            function(error) {
+                console.warn("Permesso di geolocalizzazione negato o errore nel tracciamento.");
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
 }
 
 function apriModal(nomeFermata, lat, lng) {
@@ -510,6 +557,9 @@ function caricaScriptGoogleMaps(apiKey) {
 }
 
 function logout() {
+    if (idTracciamentoPosizione !== null) {
+        navigator.geolocation.clearWatch(idTracciamentoPosizione);
+    }
     localStorage.removeItem('token'); 
     location.reload(); 
 }
