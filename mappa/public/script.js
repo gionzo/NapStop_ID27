@@ -1,11 +1,13 @@
+let mappa;
 let infoWindow; 
 let fermataCorrente = ""; 
 let latCorrente = null;
 let lngCorrente = null;
+let cerchioSveglia = null;
 
 let isLoginMode = true;
 let isViaggioAttivo = false; 
-let viaggiCaricati = []; 
+let viajesCaricati = []; 
 let preferiti = [];      
 
 window.onload = function() {
@@ -85,7 +87,7 @@ function ottieniConfigurazioneEAvviaMappa() {
 function initMap() {
     const coordinateTrento = { lat: 46.0674, lng: 11.1267 };
     
-    const mappa = new google.maps.Map(document.getElementById("map"), {
+    mappa = new google.maps.Map(document.getElementById("map"), {
         zoom: 12,
         center: coordinateTrento,
         streetViewControl: false,
@@ -100,7 +102,6 @@ function initMap() {
     const service = new google.maps.places.PlacesService(mappa);
 
     mappa.addListener("click", function(e) {
-        
         if (isViaggioAttivo) {
             alert("Hai già un viaggio attivo! Clicca su 'Cancella Viaggio' prima di selezionare una nuova destinazione.");
             if (e.placeId) {
@@ -119,7 +120,6 @@ function initMap() {
                 placeId: e.placeId,
                 fields: ['name']
             }, function(place, status) {
-                
                 let nomeFermata = "Fermata Selezionata";
                 if (status === google.maps.places.PlacesServiceStatus.OK && place) {
                     nomeFermata = place.name;
@@ -134,7 +134,7 @@ function initMap() {
                     </div>
                 `;
 
-                infoWindow.setContent(contenidoPopup);
+                infoWindow.setContent(contenutoPopup);
                 infoWindow.setPosition(e.latLng);
                 infoWindow.open(mappa);
             });
@@ -276,6 +276,25 @@ function confermaViaggio() {
     .then(data => {
         isViaggioAttivo = true;
         
+        const raggioMetri = parseInt(valoreRaggio, 10);
+        
+        if (cerchioSveglia) {
+            cerchioSveglia.setMap(null);
+        }
+
+        cerchioSveglia = new google.maps.Circle({
+            strokeColor: "#28a745",
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: "#28a745",
+            fillOpacity: 0.25,
+            map: mappa,
+            center: { lat: latCorrente, lng: lngCorrente },
+            radius: raggioMetri
+        });
+
+        mappa.panTo({ lat: latCorrente, lng: lngCorrente });
+
         const contenutowidget = `
             <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
             <p><strong>Mezzo:</strong> ${testoMezzo}</p>
@@ -301,6 +320,11 @@ function cancellaViaggio() {
         latCorrente = null;
         lngCorrente = null;
         
+        if (cerchioSveglia) {
+            cerchioSveglia.setMap(null);
+            cerchioSveglia = null;
+        }
+
         document.getElementById('widgetViaggio').classList.remove('active');
         document.getElementById('widgetDati').innerHTML = "";
     }
