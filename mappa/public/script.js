@@ -1,11 +1,14 @@
+let mappa;
 let infoWindow; 
 let fermataCorrente = ""; 
 let latCorrente = null;
 let lngCorrente = null;
+let cerchioSveglia = null;
+let markerFermataSelezionata = null;
 
 let isLoginMode = true;
 let isViaggioAttivo = false; 
-let viaggiCaricati = []; 
+let viajesCaricati = []; 
 let preferiti = [];      
 
 window.onload = function() {
@@ -85,7 +88,7 @@ function ottieniConfigurazioneEAvviaMappa() {
 function initMap() {
     const coordinateTrento = { lat: 46.0674, lng: 11.1267 };
     
-    const mappa = new google.maps.Map(document.getElementById("map"), {
+    mappa = new google.maps.Map(document.getElementById("map"), {
         zoom: 12,
         center: coordinateTrento,
         streetViewControl: false,
@@ -100,7 +103,6 @@ function initMap() {
     const service = new google.maps.places.PlacesService(mappa);
 
     mappa.addListener("click", function(e) {
-        
         if (isViaggioAttivo) {
             alert("Hai già un viaggio attivo! Clicca su 'Cancella Viaggio' prima di selezionare una nuova destinazione.");
             if (e.placeId) {
@@ -119,7 +121,6 @@ function initMap() {
                 placeId: e.placeId,
                 fields: ['name']
             }, function(place, status) {
-                
                 let nomeFermata = "Fermata Selezionata";
                 if (status === google.maps.places.PlacesServiceStatus.OK && place) {
                     nomeFermata = place.name;
@@ -134,7 +135,7 @@ function initMap() {
                     </div>
                 `;
 
-                infoWindow.setContent(contenidoPopup);
+                infoWindow.setContent(contenutoPopup);
                 infoWindow.setPosition(e.latLng);
                 infoWindow.open(mappa);
             });
@@ -276,6 +277,29 @@ function confermaViaggio() {
     .then(data => {
         isViaggioAttivo = true;
         
+        const raggioMetri = parseFloat(valoreRaggio);
+        const coordinateFermata = { lat: latCorrente, lng: lngCorrente };
+
+        cerchioSveglia = new google.maps.Circle({
+            strokeColor: "#0088ff",
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: "#00aaff",
+            fillOpacity: 0.35,
+            map: mappa,
+            center: coordinateFermata,
+            radius: raggioMetri
+        });
+
+        markerFermataSelezionata = new google.maps.Marker({
+            position: coordinateFermata,
+            map: mappa,
+            title: fermataCorrente
+        });
+
+        mappa.setCenter(coordinateFermata);
+        mappa.setZoom(14);
+
         const contenutowidget = `
             <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
             <p><strong>Mezzo:</strong> ${testoMezzo}</p>
@@ -300,6 +324,16 @@ function cancellaViaggio() {
         fermataCorrente = "";
         latCorrente = null;
         lngCorrente = null;
+
+        if (cerchioSveglia) {
+            cerchioSveglia.setMap(null);
+            cerchioSveglia = null;
+        }
+
+        if (markerFermataSelezionata) {
+            markerFermataSelezionata.setMap(null);
+            markerFermataSelezionata = null;
+        }
         
         document.getElementById('widgetViaggio').classList.remove('active');
         document.getElementById('widgetDati').innerHTML = "";
@@ -361,11 +395,11 @@ function caricaCronologia() {
             return;
         }
 
-        viaggiCaricati = viaggi; 
-        preferiti = viaggiCaricati.filter(v => v.preferito === true);
+        viajesCaricati = viaggi; 
+        preferiti = viajesCaricati.filter(v => v.preferito === true);
 
         let listaHtml = '<ul class="cronologia-lista">';
-        viaggiCaricati.forEach(v => {
+        viajesCaricati.forEach(v => {
             const labelMezzo = v.mezzo === 'treno_regionale' ? 'Treno Regionale' : (v.mezzo === 'alta_velocita' ? 'Treno ad Alta Velocità' : 'Autobus');
             const labelNotifica = v.notifica === 'suoneria' ? 'Suoneria Forte' : 'Solo Vibrazione';
             const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
@@ -396,7 +430,7 @@ function togglePreferito(elementoStellina, viaggioId) {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const viaggio = viaggiCaricati.find(v => v._id === viaggioId);
+    const viaggio = viajesCaricati.find(v => v._id === viaggioId);
     if (!viaggio) return;
 
     const nuovoStatoPreferito = !viaggio.preferito;

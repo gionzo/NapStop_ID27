@@ -366,3 +366,19 @@ body {
 .stellina.attiva {
     color: #ffc107; 
 }
+.btn-logout {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 15px;
+    margin-left: 10px;
+    transition: background-color 0.2s;
+}
+.btn-logout:hover {
+    background-color: #c82333;
+}
