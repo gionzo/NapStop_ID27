@@ -4,6 +4,7 @@ let fermataCorrente = "";
 let latCorrente = null;
 let lngCorrente = null;
 let cerchioSveglia = null;
+let markerFermataSelezionata = null;
 
 let isLoginMode = true;
 let isViaggioAttivo = false; 
@@ -276,24 +277,28 @@ function confermaViaggio() {
     .then(data => {
         isViaggioAttivo = true;
         
-        const raggioMetri = parseInt(valoreRaggio, 10);
-        
-        if (cerchioSveglia) {
-            cerchioSveglia.setMap(null);
-        }
+        const raggioMetri = parseFloat(valoreRaggio);
+        const coordinateFermata = { lat: latCorrente, lng: lngCorrente };
 
         cerchioSveglia = new google.maps.Circle({
-            strokeColor: "#28a745",
+            strokeColor: "#0088ff",
             strokeOpacity: 0.8,
             strokeWeight: 2,
-            fillColor: "#28a745",
-            fillOpacity: 0.25,
+            fillColor: "#00aaff",
+            fillOpacity: 0.35,
             map: mappa,
-            center: { lat: latCorrente, lng: lngCorrente },
+            center: coordinateFermata,
             radius: raggioMetri
         });
 
-        mappa.panTo({ lat: latCorrente, lng: lngCorrente });
+        markerFermataSelezionata = new google.maps.Marker({
+            position: coordinateFermata,
+            map: mappa,
+            title: fermataCorrente
+        });
+
+        mappa.setCenter(coordinateFermata);
+        mappa.setZoom(14);
 
         const contenutowidget = `
             <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
@@ -319,12 +324,17 @@ function cancellaViaggio() {
         fermataCorrente = "";
         latCorrente = null;
         lngCorrente = null;
-        
+
         if (cerchioSveglia) {
             cerchioSveglia.setMap(null);
             cerchioSveglia = null;
         }
 
+        if (markerFermataSelezionata) {
+            markerFermataSelezionata.setMap(null);
+            markerFermataSelezionata = null;
+        }
+        
         document.getElementById('widgetViaggio').classList.remove('active');
         document.getElementById('widgetDati').innerHTML = "";
     }
@@ -385,11 +395,11 @@ function caricaCronologia() {
             return;
         }
 
-        viaggiCaricati = viaggi; 
-        preferiti = viaggiCaricati.filter(v => v.preferito === true);
+        viajesCaricati = viaggi; 
+        preferiti = viajesCaricati.filter(v => v.preferito === true);
 
         let listaHtml = '<ul class="cronologia-lista">';
-        viaggiCaricati.forEach(v => {
+        viajesCaricati.forEach(v => {
             const labelMezzo = v.mezzo === 'treno_regionale' ? 'Treno Regionale' : (v.mezzo === 'alta_velocita' ? 'Treno ad Alta Velocità' : 'Autobus');
             const labelNotifica = v.notifica === 'suoneria' ? 'Suoneria Forte' : 'Solo Vibrazione';
             const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
@@ -420,7 +430,7 @@ function togglePreferito(elementoStellina, viaggioId) {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const viaggio = viaggiCaricati.find(v => v._id === viaggioId);
+    const viaggio = viajesCaricati.find(v => v._id === viaggioId);
     if (!viaggio) return;
 
     const nuovoStatoPreferito = !viaggio.preferito;
