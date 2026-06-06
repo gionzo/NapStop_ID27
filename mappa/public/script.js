@@ -177,6 +177,10 @@ function avviaTracciamentoPosizioneNativo() {
                         mappa.setCenter(posUtente);
                     }
                 }
+
+                if (isViaggioAttivo && latCorrente !== null && lngCorrente !== null) {
+                    verificaArrivo(posUtente);
+                }
             },
             function(error) {
                 console.warn("Permesso di geolocalizzazione negato o errore nel tracciamento.");
@@ -188,6 +192,70 @@ function avviaTracciamentoPosizioneNativo() {
             }
         );
     }
+}
+
+function verificaArrivo(posUtente) {
+    const selRaggio = document.getElementById('select-raggio');
+    const raggioImpostato = parseFloat(selRaggio.value);
+
+    if (isNaN(raggioImpostato)) return;
+
+    const posDestinazione = new google.maps.LatLng(latCorrente, lngCorrente);
+    const posAttuale = new google.maps.LatLng(posUtente.lat, posUtente.lng);
+    const distanza = google.maps.geometry.spherical.computeDistanceBetween(posAttuale, posDestinazione);
+
+    if (distanza <= raggioImpostato) {
+        const tipoNotifica = document.getElementById('select-notifica').value;
+        isViaggioAttivo = false;
+
+        if (tipoNotifica === "suoneria") {
+            eseguiSuoneriaForte();
+        } else if (tipoNotifica === "vibrazione") {
+            if (navigator.vibrate) {
+                navigator.vibrate([500, 200, 500, 200, 500]);
+            }
+        }
+
+        alert(`Sveglia! Sei entrato nel raggio di ${raggioImpostato} metri da: ${fermataCorrente}`);
+        resetGraficaViaggioTerminato();
+    }
+}
+
+function eseguiSuoneriaForte() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillatore = audioCtx.createOscillator();
+        let guadagno = audioCtx.createGain();
+        
+        oscillatore.type = 'sine';
+        oscillatore.frequency.setValueAtTime(880, audioCtx.currentTime);
+        guadagno.gain.setValueAtTime(1, audioCtx.currentTime);
+        
+        oscillatore.connect(guadagno);
+        guadagno.connect(audioCtx.destination);
+        
+        oscillatore.start();
+        oscillatore.stop(audioCtx.currentTime + 2.5);
+    } catch (e) {
+        console.error("Impossibile riprodurre l'audio:", e);
+    }
+}
+
+function resetGraficaViaggioTerminato() {
+    fermataCorrente = "";
+    latCorrente = null;
+    lngCorrente = null;
+
+    if (cerchioSveglia) {
+        cerchioSveglia.setMap(null);
+        cerchioSveglia = null;
+    }
+    if (markerFermataSelezionata) {
+        markerFermataSelezionata.setMap(null);
+        markerFermataSelezionata = null;
+    }
+    document.getElementById('widgetViaggio').classList.remove('active');
+    document.getElementById('widgetDati').innerHTML = "";
 }
 
 function apriModal(nomeFermata, lat, lng) {
@@ -358,6 +426,15 @@ function confermaViaggio() {
 
         chiudiModal();
         caricaCronologia(); 
+
+        if (markerPosizioneUtente) {
+            const posAttualeGeom = markerPosizioneUtente.getPosition();
+            const posUtenteDati = {
+                lat: posAttualeGeom.lat(),
+                lng: posAttualeGeom.lng()
+            };
+            verificaArrivo(posUtenteDati);
+        }
     })
     .catch(errore => {
         console.error(errore);
@@ -550,7 +627,7 @@ document.getElementById('modalConfigurazione').addEventListener('click', functio
 
 function caricaScriptGoogleMaps(apiKey) {
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=initMap`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
