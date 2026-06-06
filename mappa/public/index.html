@@ -4,248 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NapStop</title>
-    <style>
-        #map {
-            height: 600px;
-            width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f9;
-            position: relative; 
-            min-height: 100vh;
-        }
-
-        .logo-angolo {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            z-index: 1000;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 5px;
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        .logo-angolo img {
-            max-width: 200px;
-            height: auto;
-            display: block;
-        }
-
-        .popup-content {
-            padding: 5px;
-            min-width: 150px;
-            text-align: center;
-        }
-
-        .nome-fermata {
-            font-weight: bold;
-            font-size: 15px;
-            color: #333;
-            margin: 0;
-            display: block;
-        }
-
-        .btn-prenota {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            display: block;
-            margin: 10px 0 0 0;
-            width: 100%;
-        }
-        .btn-prenota:hover {
-            background-color: #218838;
-        }
-
-        /* --- STILI PER IL MODAL VERTICALE --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .modal-box {
-            background-color: white;
-            width: 90%;
-            max-width: 400px; 
-            height: auto;       
-            max-height: 90vh;   
-            overflow-y: auto;   
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column; 
-            gap: 15px;
-            padding: 35px 25px 25px 25px;
-            box-sizing: border-box;
-            position: relative;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            font-size: 24px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #666;
-        }
-
-        .modal-section {
-            background-color: #f8f9fa;
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #495057;
-            transition: all 0.3s ease;
-        }
-
-        .modal-section h3 {
-            margin: 0 0 10px 0;
-            font-size: 16px;
-        }
-
-        .modal-section.disabled {
-            opacity: 0.3;
-            pointer-events: none;
-            background-color: #e9ecef;
-            border-color: #ced4da;
-        }
-
-        .modal-section select {
-            padding: 10px;
-            font-size: 15px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            width: 100%; 
-            box-sizing: border-box;
-        }
-
-        .section-conferma {
-            background-color: #fff;
-            border: none;
-            padding: 5px 0 0 0;
-        }
-
-        .btn-conferma {
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            padding: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-            transition: background-color 0.2s;
-        }
-
-        .btn-conferma:hover {
-            background-color: #bd2130;
-        }
-
-        .btn-conferma:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-
-        /* --- NUOVO: STILE PER IL WIDGET "IL MIO VIAGGIO" (LATO DESTRO) --- */
-        .widget-viaggio {
-            position: fixed;
-            top: 40px;
-            right: 20px;
-            width: 280px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            border-left: 5px solid #dc3545; /* Richiamo estetico al tasto rosso */
-            padding: 15px;
-            z-index: 999; /* Sotto al modal ma sopra la mappa */
-            box-sizing: border-box;
-            display: none; /* Nascosto all'inizio */
-            transition: all 0.3s ease;
-        }
-
-        .widget-viaggio.active {
-            display: block;
-        }
-
-        .widget-viaggio h2 {
-            margin: 0 0 12px 0;
-            font-size: 16px;
-            color: #333;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 5px;
-        }
-
-        .widget-close {
-            position: absolute;
-            top: 10px;
-            right: 12px;
-            font-size: 18px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #999;
-        }
-        .widget-close:hover {
-            color: #333;
-        }
-
-        .widget-info {
-            font-size: 14px;
-            color: #555;
-            line-height: 1.5;
-        }
-
-        .widget-info strong {
-            color: #111;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+    <div class="auth-overlay" id="authScreen">
+        <div class="auth-box">
+            <h2 id="authTitle">Accedi a NapStop</h2>
+            <input type="email" id="authEmail" placeholder="Email" required>
+            <input type="password" id="authPassword" placeholder="Password" required>
+            <button class="btn-auth" id="btnAuthSubmit" onclick="gestisciAutenticazione()">Accedi</button>
+            <div class="auth-toggle" id="authToggle" onclick="cambiaModalitaAuth()">
+                Non hai un account? <span>Registrati qui</span>
+            </div>
+        </div>
+    </div>
 
     <h1>NapStop, implementazione visuale mappa con api google</h1>
     
     <div id="map">Caricamento mappa in corso...</div>
 
+    <button class="btn-cronologia-toggle" id="btnToggleCronologia" onclick="toggleCronologia()">Mostra Cronologia Viaggi</button>
+    <button class="btn-preferiti-toggle" id="btnTogglePreferiti" onclick="togglePreferiti()">Mostra Preferiti</button>
+    <button class="btn-logout" onclick="logout()">Esci / Cambia Account</button> 
+   
+    <div class="flex-container">
+        <div class="panel-cronologia" id="panelCronologia">
+            <h2>La tua Cronologia Viaggi</h2>
+            <div id="cronologiaContenuto">Nessun viaggio caricato.</div>
+        </div>
+
+        <div class="panel-preferiti" id="panelPreferiti">
+            <h2>I tuoi Preferiti</h2>
+            <div id="preferitiContenuto">Nessun viaggio tra i preferiti.</div>
+        </div>
+    </div>
+
     <div class="logo-angolo">
         <img src="logo_napstop.png" alt="Logo NapStop">
     </div>
 
-    <!-- --- STRUTTURA DEL MODAL VERTICALE --- -->
     <div class="modal-overlay" id="modalConfigurazione">
         <div class="modal-box">
             <button class="modal-close" onclick="chiudiModal()">&times;</button>
@@ -277,211 +75,18 @@
             </div>
             
             <div class="modal-section section-conferma disabled" id="sec-conferma">
-                <!-- Aggiunto l'evento onclick per confermare il viaggio -->
                 <button class="btn-conferma" id="btn-conferma-viaggio" onclick="confermaViaggio()" disabled>Conferma Viaggio</button>
             </div>
         </div>
     </div>
 
-    <!-- --- NUOVO: PANNELLO LATERALE "IL MIO VIAGGIO" --- -->
     <div class="widget-viaggio" id="widgetViaggio">
-        <button class="widget-close" onclick="chiudiWidget()">&times;</button>
         <h2>Il mio viaggio</h2>
-        <div class="widget-info" id="widgetDati">
-            <!-- I dati inseriti dall'utente compariranno qui dentro -->
-        </div>
+        <div class="widget-info" id="widgetDati"></div>
+        <button class="btn-cancella-viaggio" onclick="cancellaViaggio()">Cancella Viaggio</button>
     </div>
 
-    <script>
-        let infoWindow; 
-        let fermataCorrente = ""; // Variabile per tracciare il nome della fermata selezionata
-
-        function initMap() {
-            const coordinateTrento = { lat: 46.0674, lng: 11.1267 };
-            
-            const mappa = new google.maps.Map(document.getElementById("map"), {
-                zoom: 12,
-                center: coordinateTrento,
-                streetViewControl: false,
-                styles: [
-                    { featureType: "poi", elementType: "all", stylers: [{ visibility: "off" }] },
-                    { featureType: "transit.station", elementType: "all", stylers: [{ visibility: "on" }, { weight: 2 }] },
-                    { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#ffc107" }] }
-                ]
-            });
-
-            infoWindow = new google.maps.InfoWindow();
-            const service = new google.maps.places.PlacesService(mappa);
-
-            mappa.addListener("click", function(e) {
-                if (e.placeId) {
-                    e.stop();
-
-                    service.getDetails({
-                        placeId: e.placeId,
-                        fields: ['name']
-                    }, function(place, status) {
-                        
-                        let nomeFermata = "Fermata Selezionata";
-                        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-                            nomeFermata = place.name;
-                        }
-
-                        const contenutoPopup = `
-                            <div class="popup-content">
-                                <span class="nome-fermata">${nomeFermata}</span>
-                                <button class="btn-prenota" onclick="apriModal('${nomeFermata.replace(/'/g, "\\'")}')">
-                                    prenota fermata e inizia il viaggio
-                                </button>
-                            </div>
-                        `;
-
-                        infoWindow.setContent(contenutoPopup);
-                        infoWindow.setPosition(e.latLng);
-                        infoWindow.open(mappa);
-                    });
-                }
-            });
-        }
-
-        function apriModal(nomeFermata) {
-            fermataCorrente = nomeFermata; // Salva il nome della fermata per dopo
-            if(infoWindow) infoWindow.close(); 
-            
-            document.getElementById('select-mezzo').value = "";
-            document.getElementById('select-raggio').value = "";
-            document.getElementById('select-notifica').value = "";
-            aggiornaOpzioniRaggio(); 
-            gestisciCascata(); 
-
-            document.getElementById('modalConfigurazione').classList.add('active');
-        }
-
-        function chiudiModal() {
-            document.getElementById('modalConfigurazione').classList.remove('active');
-        }
-
-        function aggiornaOpzioniRaggio() {
-            const mezzo = document.getElementById('select-mezzo').value;
-            const selectRaggio = document.getElementById('select-raggio');
-            
-            selectRaggio.innerHTML = '<option value="">-- Seleziona Raggio --</option>';
-
-            if (mezzo === "autobus") {
-                selectRaggio.innerHTML += `
-                    <option value="350">350 m (circa 1 min.)</option>
-                    <option value="1000">1 km (circa 3 min.)</option>
-                    <option value="1700">1,7 km (circa 5 min.)</option>
-                `;
-            } else if (mezzo === "treno_regionale") {
-                selectRaggio.innerHTML += `
-                    <option value="800">800 m (circa 1 min.)</option>
-                    <option value="4500">4,5 km (circa 3 min.)</option>
-                    <option value="17000">17 km (circa 10 min.)</option>
-                `;
-            } else if (mezzo === "alta_velocita") {
-                selectRaggio.innerHTML += `
-                    <option value="900">900 m (circa 1 min.)</option>
-                    <option value="5500">5,5 km (circa 3 min.)</option>
-                    <option value="25000">25 km (circa 10 min.)</option>
-                `;
-            }
-        }
-
-        function gestisciCascata() {
-            const mezzo = document.getElementById('select-mezzo').value;
-            const raggio = document.getElementById('select-raggio').value;
-            const notifica = document.getElementById('select-notifica').value;
-
-            const secRaggio = document.getElementById('sec-raggio');
-            const secNotifica = document.getElementById('sec-notifica');
-            const secConferma = document.getElementById('sec-conferma');
-
-            const selectRaggio = document.getElementById('select-raggio');
-            const selectNotifica = document.getElementById('select-notifica');
-            const btnConferma = document.getElementById('btn-conferma-viaggio');
-
-            if (mezzo !== "") {
-                secRaggio.classList.remove('disabled');
-                selectRaggio.removeAttribute('disabled');
-            } else {
-                secRaggio.classList.add('disabled');
-                selectRaggio.setAttribute('disabled', 'true');
-                selectRaggio.value = "";
-            }
-
-            if (mezzo !== "" && raggio !== "") {
-                secNotifica.classList.remove('disabled');
-                selectNotifica.removeAttribute('disabled');
-            } else {
-                secNotifica.classList.add('disabled');
-                selectNotifica.setAttribute('disabled', 'true');
-                selectNotifica.value = "";
-            }
-
-            if (mezzo !== "" && raggio !== "" && notifica !== "") {
-                secConferma.classList.remove('disabled');
-                btnConferma.removeAttribute('disabled');
-            } else {
-                secConferma.classList.add('disabled');
-                btnConferma.setAttribute('disabled', 'true');
-            }
-        }
-
-        // --- NUOVE FUNZIONI: GESTIONE VIAGGIO CONFERMATO ---
-        function confermaViaggio() {
-            // Preleva i testi descrittivi delle opzioni selezionate
-            const selMezzo = document.getElementById('select-mezzo');
-            const testoMezzo = selMezzo.options[selMezzo.selectedIndex].text;
-
-            const selRaggio = document.getElementById('select-raggio');
-            const testoRaggio = selRaggio.options[selRaggio.selectedIndex].text;
-
-            const selNotifica = document.getElementById('select-notifica');
-            const testoNotifica = selNotifica.options[selNotifica.selectedIndex].text;
-
-            // Costruisce il contenuto HTML da mostrare nel rettangolo a destra
-            const contenutowidget = `
-                <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
-                <p><strong>Mezzo:</strong> ${testoMezzo}</p>
-                <p><strong>Raggio sveglia:</strong> ${testoRaggio}</p>
-                <p><strong>Tipo notifica:</strong> ${testoNotifica}</p>
-            `;
-
-            // Inserisce i dati e mostra il widget a destra
-            document.getElementById('widgetDati').innerHTML = contenutowidget;
-            document.getElementById('widgetViaggio').classList.add('active');
-
-            // Chiude il modal centrale di input
-            chiudiModal();
-        }
-
-        function chiudiWidget() {
-            document.getElementById('widgetViaggio').classList.remove('active');
-        }
-
-        document.getElementById('modalConfigurazione').addEventListener('click', function(e) {
-            if (e.target === this) {
-                chiudiModal();
-            }
-        });
-
-        fetch('/api-config')
-            .then(response => response.json())
-            .then(config => {
-                caricaScriptGoogleMaps(config.apiKey);
-            })
-            .catch(err => {
-                console.error("Errore configurazione API:", err);
-            });
-
-        function caricaScriptGoogleMaps(apiKey) {
-            const script = document.createElement('script');
-            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
-        }
-    </script>
+    <script src="script.js"></script>
+   
 </body>
 </html>
