@@ -530,7 +530,8 @@ function aggiornaGraficaPreferiti() {
         const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
 
         listaHtml += `
-            <li class="cronologia-item" style="border-left-color: #ffc107;">
+            <li class="cronologia-item preferito-cliccabile" style="border-left-color: #ffc107;" onclick="riprendiViaggioPreferito('${v._id}')">
+                <span class="stellina attiva" onclick="event.stopPropagation(); togglePreferito(this, '${v._id}')">★</span>
                 <strong>Destinazione:</strong> ${v.destinazione}<br>
                 <strong>Mezzo:</strong> ${labelMezzo} | 
                 <strong>Raggio:</strong> ${labelRaggio} | 
@@ -540,6 +541,32 @@ function aggiornaGraficaPreferiti() {
     });
     listaHtml += '</ul>';
     contenitorePreferiti.innerHTML = listaHtml;
+}
+function riprendiViaggioPreferito(viaggioId) {
+    const viaggio = preferiti.find(v => v._id === viaggioId);
+    if (!viaggio) return;
+
+    if (isViaggioAttivo) {
+        alert("Hai già un viaggio attivo! Clicca su 'Cancella Viaggio' prima di selezionare una nuova destinazione.");
+        return;
+    }
+
+    
+    fermataCorrente = viaggio.destinazione;
+    latCorrente = viaggio.lat;
+    lngCorrente = viaggio.lng;
+
+    
+    document.getElementById('modalConfigurazione').classList.add('active');
+
+    
+    document.getElementById('select-mezzo').value = viaggio.mezzo;
+    aggiornaOpzioniRaggio(); // Genera le opzioni per il select del raggio
+    document.getElementById('select-raggio').value = viaggio.raggio;
+    document.getElementById('select-notifica').value = viaggio.notifica;
+
+    
+    gestisciCascata();
 }
 
 document.getElementById('modalConfigurazione').addEventListener('click', function(e) {

@@ -15,12 +15,14 @@ mongoose.connect(mongoUri)
   .then(() => console.log('Connesso con successo a MongoDB!'))
   .catch(err => console.error('Errore di connessione a MongoDB:', err));
 
+// Schema Utente
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, trim: true },
   password: { type: String, required: true }
 });
 const User = mongoose.model('User', userSchema);
 
+// Schema Viaggio (Versione completa con lat, lng e preferito)
 const viaggioSchema = new mongoose.Schema({
   utenteId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   destinazione: { type: String, required: true },
@@ -34,6 +36,7 @@ const viaggioSchema = new mongoose.Schema({
 });
 const Viaggio = mongoose.model('Viaggio', viaggioSchema);
 
+// Middleware Autenticazione
 function autenticaToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -51,6 +54,7 @@ function autenticaToken(req, res, next) {
   });
 }
 
+// Rotte Auth
 app.post('/api/signup', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -102,6 +106,7 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Rotte Viaggi
 app.post('/api/viaggi', autenticaToken, async (req, res) => {
   try {
     const { destinazione, lat, lng, mezzo, raggio, notifica, preferito } = req.body;
@@ -161,164 +166,7 @@ app.put('/api/viaggi/:id', autenticaToken, async (req, res) => {
   }
 });
 
-app.get('/api-config', (req, res) => {
-  res.json({ apiKey: process.env.GOOGLE_MAPS_API_KEY });
-});
-
-app.listen(port, () => {
-  console.log(`\n Server pronto! Apri il browser su: http://localhost:${port}`);
-});import 'dotenv/config'; 
-import express from 'express';
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-
-const app = express();
-const port = process.env.PORT || 3000;
-
-// Permette al server di leggere i dati JSON inviati dal frontend
-app.use(express.json());
-
-// Configura Express per leggere i file statici da una cartella chiamata "public" (html)
-app.use(express.static('public'));
-
-// ==========================================
-// DB CONFIGURATION & MODELS (MongoDB)
-// ==========================================
-const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/napstop';
-mongoose.connect(mongoUri)
-  .then(() => console.log('Connesso con successo a MongoDB!'))
-  .catch(err => console.error('Errore di connessione a MongoDB:', err));
-
-// Schema Utente
-const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true, trim: true },
-  password: { type: String, required: true }
-});
-const User = mongoose.model('User', userSchema);
-
-// Schema Viaggio
-const viaggioSchema = new mongoose.Schema({
-  utenteId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  destinazione: { type: String, required: true },
-  mezzo: { type: String, required: true },
-  raggio: { type: String, required: true },
-  notifica: { type: String, required: true },
-  dataCreazione: { type: Date, default: Date.now }
-});
-const Viaggio = mongoose.model('Viaggio', viaggioSchema);
-
-// ==========================================
-// MIDDLEWARE DI AUTENTICAZIONE (JWT)
-// ==========================================
-function autenticaToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ errore: 'Accesso negato. Token mancante.' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ errore: 'Token non valido o scaduto.' });
-    }
-    req.userId = decoded.userId;
-    next();
-  });
-}
-
-// ==========================================
-// ROTTE API
-// ==========================================
-
-// 1. Registrazione (Sign Up)
-app.post('/api/signup', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ errore: 'Email e password sono obbligatorie.' });
-    }
-
-    const utenteEsistente = await User.findOne({ email });
-    if (utenteEsistente) {
-      return res.status(400).json({ errore: 'Questa email è già registrata.' });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const passwordCriptata = await bcrypt.hash(password, salt);
-
-    const nuovoUtente = new User({ email, password: passwordCriptata });
-    await nuovoUtente.save();
-
-    res.status(201).json({ messaggio: 'Registrazione completata con successo!' });
-  } catch (error) {
-    console.error('Errore Signup:', error);
-    res.status(500).json({ errore: 'Errore nel server durante la registrazione.' });
-  }
-});
-
-// 2. Accesso (Log In)
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ errore: 'Inserisci email e password.' });
-    }
-
-    const utente = await User.findOne({ email });
-    if (!utente) {
-      return res.status(400).json({ errore: 'Email o password errate.' });
-    }
-
-    const passwordValida = await bcrypt.compare(password, utente.password);
-    if (!passwordValida) {
-      return res.status(400).json({ errore: 'Email o password errate.' });
-    }
-
-    const token = jwt.sign({ userId: utente._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
-
-    res.json({ messaggio: 'Login effettuato con successo!', token });
-  } catch (error) {
-    console.error('Errore Login:', error);
-    res.status(500).json({ errore: 'Errore nel server durante il login.' });
-  }
-});
-
-// 3. Salvataggio Nuovo Viaggio (Protetta da Token)
-app.post('/api/viaggi', autenticaToken, async (req, res) => {
-  try {
-    const { destinazione, mezzo, raggio, notifica } = req.body;
-
-    const nuovoViaggio = new Viaggio({
-      utenteId: req.userId, 
-      destinazione,
-      mezzo,
-      raggio,
-      notifica
-    });
-
-    await nuovoViaggio.save();
-    res.status(201).json({ messaggio: 'Viaggio salvato nel database con successo!', viaggio: nuovoViaggio });
-  } catch (error) {
-    console.error('Errore Salvataggio Viaggio:', error);
-    res.status(500).json({ errore: 'Impossibile salvare il viaggio nel database.' });
-  }
-});
-
-// --- NUOVO: 4. Recupero Cronologia Viaggi dell'utente loggato (Protetta da Token) ---
-app.get('/api/viaggi', autenticaToken, async (req, res) => {
-  try {
-    // Trova tutti i viaggi legati all'ID dell'utente loggato estratti dal token JWT ordinati dai più recenti
-    const viaggi = await Viaggio.find({ utenteId: req.userId }).sort({ dataCreazione: -1 });
-    res.json(viaggi);
-  } catch (error) {
-    console.error('Errore recupero cronologia:', error);
-    res.status(500).json({ errore: 'Impossibile recuperare la cronologia dei viaggi.' });
-  }
-});
-
-// Rotta per inviare la chiave API al frontend
+// Configurazione chiavi esterne
 app.get('/api-config', (req, res) => {
   res.json({ apiKey: process.env.GOOGLE_MAPS_API_KEY });
 });

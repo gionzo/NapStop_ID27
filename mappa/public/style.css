@@ -382,3 +382,12 @@ body {
 .btn-logout:hover {
     background-color: #c82333;
 }
+.preferito-cliccabile {
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.preferito-cliccabile:hover {
+    background-color: #e2e6ea;
+    transform: scale(1.01);
+}
