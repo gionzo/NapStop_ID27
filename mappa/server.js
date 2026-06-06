@@ -15,14 +15,12 @@ mongoose.connect(mongoUri)
   .then(() => console.log('Connesso con successo a MongoDB!'))
   .catch(err => console.error('Errore di connessione a MongoDB:', err));
 
-// Schema Utente
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, trim: true },
   password: { type: String, required: true }
 });
 const User = mongoose.model('User', userSchema);
 
-// Schema Viaggio (Versione completa con lat, lng e preferito)
 const viaggioSchema = new mongoose.Schema({
   utenteId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   destinazione: { type: String, required: true },
@@ -36,7 +34,6 @@ const viaggioSchema = new mongoose.Schema({
 });
 const Viaggio = mongoose.model('Viaggio', viaggioSchema);
 
-// Middleware Autenticazione
 function autenticaToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -54,7 +51,6 @@ function autenticaToken(req, res, next) {
   });
 }
 
-// Rotte Auth
 app.post('/api/signup', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -106,7 +102,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Rotte Viaggi
 app.post('/api/viaggi', autenticaToken, async (req, res) => {
   try {
     const { destinazione, lat, lng, mezzo, raggio, notifica, preferito } = req.body;
@@ -166,7 +161,6 @@ app.put('/api/viaggi/:id', autenticaToken, async (req, res) => {
   }
 });
 
-// Configurazione chiavi esterne
 app.get('/api-config', (req, res) => {
   res.json({ apiKey: process.env.GOOGLE_MAPS_API_KEY });
 });
