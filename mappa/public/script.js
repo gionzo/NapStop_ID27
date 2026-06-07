@@ -145,6 +145,7 @@ function initMap() {
     });
 
     avviaTracciamentoPosizioneNativo();
+    ripristinaViaggioSalvato();
 }
 
 function avviaTracciamentoPosizioneNativo() {
@@ -242,6 +243,7 @@ function eseguiSuoneriaForte() {
 }
 
 function resetGraficaViaggioTerminato() {
+    localStorage.removeItem('viaggioAttivo');
     fermataCorrente = "";
     latCorrente = null;
     lngCorrente = null;
@@ -391,6 +393,18 @@ function confermaViaggio() {
     })
     .then(data => {
         isViaggioAttivo = true;
+       
+        localStorage.setItem('viaggioAttivo', JSON.stringify({
+            destinazione: fermataCorrente,
+            lat: latCorrente,
+            lng: lngCorrente,
+            mezzo: valoreMezzo,
+            testoMezzo: testoMezzo,
+            raggio: valoreRaggio,
+            testoRaggio: testoRaggio,
+            notifica: valoreNotifica,
+            testoNotifica: testoNotifica
+        }));
         
         const raggioMetri = parseFloat(valoreRaggio);
         const coordinateFermata = { lat: latCorrente, lng: lngCorrente };
@@ -441,9 +455,49 @@ function confermaViaggio() {
         alert("Si è verificato un errore nel salvataggio del viaggio nel database.");
     });
 }
+function ripristinaViaggioSalvato() {
+    const viaggioSalvatoStr = localStorage.getItem('viaggioAttivo');
+    if (!viaggioSalvatoStr) return; 
+
+    const viaggio = JSON.parse(viaggioSalvatoStr);
+
+    
+    isViaggioAttivo = true;
+    fermataCorrente = viaggio.destinazione;
+    latCorrente = viaggio.lat;
+    lngCorrente = viaggio.lng;
+
+    const raggioMetri = parseFloat(viaggio.raggio);
+    const coordinateFermata = { lat: latCorrente, lng: lngCorrente };
+
+    
+    cerchioSveglia = new google.maps.Circle({
+        strokeColor: "#0088ff", strokeOpacity: 0.8, strokeWeight: 2,
+        fillColor: "#00aaff", fillOpacity: 0.35,
+        map: mappa, center: coordinateFermata, radius: raggioMetri
+    });
+
+    markerFermataSelezionata = new google.maps.Marker({
+        position: coordinateFermata, map: mappa, title: fermataCorrente
+    });
+
+    mappa.setCenter(coordinateFermata);
+    mappa.setZoom(14);
+
+    
+    const contenutowidget = `
+        <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
+        <p><strong>Mezzo:</strong> ${viaggio.testoMezzo}</p>
+        <p><strong>Raggio sveglia:</strong> ${viaggio.testoRaggio}</p>
+        <p><strong>Tipo notifica:</strong> ${viaggio.testoNotifica}</p>
+    `;
+    document.getElementById('widgetDati').innerHTML = contenutowidget;
+    document.getElementById('widgetViaggio').classList.add('active');
+}
 
 function cancellaViaggio() {
     if (confirm("Sei sicuro di voler cancellare il viaggio attualmente attivo?")) {
+        localStorage.removeItem('viaggioAttivo');
         isViaggioAttivo = false;
         fermataCorrente = "";
         latCorrente = null;
@@ -461,6 +515,7 @@ function cancellaViaggio() {
         
         document.getElementById('widgetViaggio').classList.remove('active');
         document.getElementById('widgetDati').innerHTML = "";
+        
     }
 }
 
@@ -638,7 +693,7 @@ function riprendiViaggioPreferito(viaggioId) {
 
     
     document.getElementById('select-mezzo').value = viaggio.mezzo;
-    aggiornaOpzioniRaggio(); // Genera le opzioni per il select del raggio
+    aggiornaOpzioniRaggio(); 
     document.getElementById('select-raggio').value = viaggio.raggio;
     document.getElementById('select-notifica').value = viaggio.notifica;
 
