@@ -29,6 +29,7 @@ const viaggioSchema = new mongoose.Schema({
   mezzo: { type: String, required: true },
   raggio: { type: String, required: true },
   notifica: { type: String, required: true },
+  suoneria: { type: String, default: null },
   preferito: { type: Boolean, default: false },
   dataCreazione: { type: Date, default: Date.now }
 });
@@ -104,7 +105,7 @@ app.post('/api/login', async (req, res) => {
 
 app.post('/api/viaggi', autenticaToken, async (req, res) => {
   try {
-    const { destinazione, lat, lng, mezzo, raggio, notifica, preferito } = req.body;
+    const { destinazione, lat, lng, mezzo, raggio, notifica, suoneria, preferito } = req.body;
 
     const nuovoViaggio = new Viaggio({
       utenteId: req.userId, 
@@ -114,6 +115,7 @@ app.post('/api/viaggi', autenticaToken, async (req, res) => {
       mezzo,
       raggio,
       notifica,
+      suoneria: suoneria || null,
       preferito: preferito || false
     });
 
