@@ -210,7 +210,13 @@ function verificaArrivo(posUtente) {
         isViaggioAttivo = false;
 
         if (tipoNotifica === "suoneria") {
-            eseguiSuoneriaForte();
+            const viaggioSalvatoStr = localStorage.getItem('viaggioAttivo');
+            let fileMp3 = "suoneria1.mp3";
+            if (viaggioSalvatoStr) {
+                const viaggio = JSON.parse(viaggioSalvatoStr);
+                fileMp3 = viaggio.suoneria || "suoneria1.mp3";
+            }
+            eseguiSuoneriaForte(fileMp3);
         } else if (tipoNotifica === "vibrazione") {
             if (navigator.vibrate) {
                 navigator.vibrate([500, 200, 500, 200, 500]);
@@ -222,21 +228,10 @@ function verificaArrivo(posUtente) {
     }
 }
 
-function eseguiSuoneriaForte() {
+function eseguiSuoneriaForte(fileMp3) {
     try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let oscillatore = audioCtx.createOscillator();
-        let guadagno = audioCtx.createGain();
-        
-        oscillatore.type = 'sine';
-        oscillatore.frequency.setValueAtTime(880, audioCtx.currentTime);
-        guadagno.gain.setValueAtTime(1, audioCtx.currentTime);
-        
-        oscillatore.connect(guadagno);
-        guadagno.connect(audioCtx.destination);
-        
-        oscillatore.start();
-        oscillatore.stop(audioCtx.currentTime + 2.5);
+        const audio = new Audio("suoneria/" + fileMp3);
+        audio.play();
     } catch (e) {
         console.error("Impossibile riprodurre l'audio:", e);
     }
@@ -270,6 +265,7 @@ function apriModal(nomeFermata, lat, lng) {
     document.getElementById('select-mezzo').value = "";
     document.getElementById('select-raggio').value = "";
     document.getElementById('select-notifica').value = "";
+    document.getElementById('select-suoneria').value = "";
     aggiornaOpzioniRaggio(); 
     gestisciCascata(); 
 
@@ -311,13 +307,16 @@ function gestisciCascata() {
     const mezzo = document.getElementById('select-mezzo').value;
     const raggio = document.getElementById('select-raggio').value;
     const notifica = document.getElementById('select-notifica').value;
+    const suoneria = document.getElementById('select-suoneria').value;
 
     const secRaggio = document.getElementById('sec-raggio');
     const secNotifica = document.getElementById('sec-notifica');
+    const secSuoneria = document.getElementById('sec-suoneria');
     const secConferma = document.getElementById('sec-conferma');
 
     const selectRaggio = document.getElementById('select-raggio');
     const selectNotifica = document.getElementById('select-notifica');
+    const selectSuoneria = document.getElementById('select-suoneria');
     const btnConferma = document.getElementById('btn-conferma-viaggio');
 
     if (mezzo !== "") {
@@ -338,7 +337,25 @@ function gestisciCascata() {
         selectNotifica.value = "";
     }
 
-    if (mezzo !== "" && raggio !== "" && notifica !== "") {
+    if (mezzo !== "" && raggio !== "" && notifica === "suoneria") {
+        secSuoneria.classList.remove('disabled');
+        selectSuoneria.removeAttribute('disabled');
+    } else {
+        secSuoneria.classList.add('disabled');
+        selectSuoneria.setAttribute('disabled', 'true');
+        selectSuoneria.value = "";
+    }
+
+    let abilitaConferma = false;
+    if (mezzo !== "" && raggio !== "") {
+        if (notifica === "vibrazione") {
+            abilitaConferma = true;
+        } else if (notifica === "suoneria" && suoneria !== "") {
+            abilitaConferma = true;
+        }
+    }
+
+    if (abilitaConferma) {
         secConferma.classList.remove('disabled');
         btnConferma.removeAttribute('disabled');
     } else {
@@ -360,6 +377,10 @@ function confermaViaggio() {
     const valoreNotifica = selNotifica.value;
     const testoNotifica = selNotifica.options[selNotifica.selectedIndex].text;
 
+    const selSuoneria = document.getElementById('select-suoneria');
+    const valoreSuoneria = selSuoneria.value;
+    const testoSuoneria = valoreSuoneria ? selSuoneria.options[selSuoneria.selectedIndex].text : "";
+
     const token = localStorage.getItem('token');
     if (!token) {
         alert("Sessione scaduta o non valida. Effettua nuovamente il login.");
@@ -374,6 +395,7 @@ function confermaViaggio() {
         mezzo: valoreMezzo,
         raggio: valoreRaggio,
         notifica: valoreNotifica,
+        suoneria: valoreSuoneria,
         preferito: false
     };
 
@@ -403,7 +425,9 @@ function confermaViaggio() {
             raggio: valoreRaggio,
             testoRaggio: testoRaggio,
             notifica: valoreNotifica,
-            testoNotifica: testoNotifica
+            testoNotifica: testoNotifica,
+            suoneria: valoreSuoneria,
+            testoSuoneria: testoSuoneria
         }));
         
         const raggioMetri = parseFloat(valoreRaggio);
@@ -429,11 +453,12 @@ function confermaViaggio() {
         mappa.setCenter(coordinateFermata);
         mappa.setZoom(14);
 
+        const visualizzazioneNotifica = valoreNotifica === "suoneria" ? `${testoNotifica} (${testoSuoneria})` : testoNotifica;
         const contenutowidget = `
             <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
             <p><strong>Mezzo:</strong> ${testoMezzo}</p>
             <p><strong>Raggio sveglia:</strong> ${testoRaggio}</p>
-            <p><strong>Tipo notifica:</strong> ${testoNotifica}</p>
+            <p><strong>Tipo notifica:</strong> ${visualizzazioneNotifica}</p>
         `;
         document.getElementById('widgetDati').innerHTML = contenutowidget;
         document.getElementById('widgetViaggio').classList.add('active');
@@ -455,13 +480,13 @@ function confermaViaggio() {
         alert("Si è verificato un errore nel salvataggio del viaggio nel database.");
     });
 }
+
 function ripristinaViaggioSalvato() {
     const viaggioSalvatoStr = localStorage.getItem('viaggioAttivo');
     if (!viaggioSalvatoStr) return; 
 
     const viaggio = JSON.parse(viaggioSalvatoStr);
 
-    
     isViaggioAttivo = true;
     fermataCorrente = viaggio.destinazione;
     latCorrente = viaggio.lat;
@@ -470,7 +495,6 @@ function ripristinaViaggioSalvato() {
     const raggioMetri = parseFloat(viaggio.raggio);
     const coordinateFermata = { lat: latCorrente, lng: lngCorrente };
 
-    
     cerchioSveglia = new google.maps.Circle({
         strokeColor: "#0088ff", strokeOpacity: 0.8, strokeWeight: 2,
         fillColor: "#00aaff", fillOpacity: 0.35,
@@ -484,12 +508,12 @@ function ripristinaViaggioSalvato() {
     mappa.setCenter(coordinateFermata);
     mappa.setZoom(14);
 
-    
+    const visualizzazioneNotifica = viaggio.notifica === "suoneria" ? `${viaggio.testoNotifica} (${viaggio.testoSuoneria})` : viaggio.testoNotifica;
     const contenutowidget = `
         <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
         <p><strong>Mezzo:</strong> ${viaggio.testoMezzo}</p>
         <p><strong>Raggio sveglia:</strong> ${viaggio.testoRaggio}</p>
-        <p><strong>Tipo notifica:</strong> ${viaggio.testoNotifica}</p>
+        <p><strong>Tipo notifica:</strong> ${visualizzazioneNotifica}</p>
     `;
     document.getElementById('widgetDati').innerHTML = contenutowidget;
     document.getElementById('widgetViaggio').classList.add('active');
@@ -515,7 +539,6 @@ function cancellaViaggio() {
         
         document.getElementById('widgetViaggio').classList.remove('active');
         document.getElementById('widgetDati').innerHTML = "";
-        
     }
 }
 
@@ -580,7 +603,7 @@ function caricaCronologia() {
         let listaHtml = '<ul class="cronologia-lista">';
         viajesCaricati.forEach(v => {
             const labelMezzo = v.mezzo === 'treno_regionale' ? 'Treno Regionale' : (v.mezzo === 'alta_velocita' ? 'Treno ad Alta Velocità' : 'Autobus');
-            const labelNotifica = v.notifica === 'suoneria' ? 'Suoneria Forte' : 'Solo Vibrazione';
+            const labelNotifica = v.notifica === 'suoneria' ? `Suoneria Forte (${v.suoneria || 'Predefinita'})` : 'Solo Vibrazione';
             const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
 
             const classeStellina = v.preferito ? 'stellina attiva' : 'stellina';
@@ -658,7 +681,7 @@ function aggiornaGraficaPreferiti() {
     let listaHtml = '<ul class="cronologia-lista">';
     preferiti.forEach(v => {
         const labelMezzo = v.mezzo === 'treno_regionale' ? 'Treno Regionale' : (v.mezzo === 'alta_velocita' ? 'Treno ad Alta Velocità' : 'Autobus');
-        const labelNotifica = v.notifica === 'suoneria' ? 'Suoneria Forte' : 'Solo Vibrazione';
+        const labelNotifica = v.notifica === 'suoneria' ? `Suoneria Forte (${v.suoneria || 'Predefinita'})` : 'Solo Vibrazione';
         const labelRaggio = v.raggio >= 1000 ? `${v.raggio / 1000} km` : `${v.raggio} m`;
 
         listaHtml += `
@@ -674,6 +697,7 @@ function aggiornaGraficaPreferiti() {
     listaHtml += '</ul>';
     contenitorePreferiti.innerHTML = listaHtml;
 }
+
 function riprendiViaggioPreferito(viaggioId) {
     const viaggio = preferiti.find(v => v._id === viaggioId);
     if (!viaggio) return;
@@ -683,21 +707,18 @@ function riprendiViaggioPreferito(viaggioId) {
         return;
     }
 
-    
     fermataCorrente = viaggio.destinazione;
     latCorrente = viaggio.lat;
     lngCorrente = viaggio.lng;
 
-    
     document.getElementById('modalConfigurazione').classList.add('active');
 
-    
     document.getElementById('select-mezzo').value = viaggio.mezzo;
     aggiornaOpzioniRaggio(); 
     document.getElementById('select-raggio').value = viaggio.raggio;
     document.getElementById('select-notifica').value = viaggio.notifica;
+    document.getElementById('select-suoneria').value = viaggio.suoneria || "";
 
-    
     gestisciCascata();
 }
 
