@@ -17,7 +17,8 @@ mongoose.connect(mongoUri)
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, trim: true },
-  password: { type: String, required: true }
+  password: { type: String, required: true },
+  fotoProfilo: { type: String, default: 'avatar1.png' }
 });
 const User = mongoose.model('User', userSchema);
 
@@ -100,6 +101,39 @@ app.post('/api/login', async (req, res) => {
   } catch (error) {
     console.error('Errore Login:', error);
     res.status(500).json({ errore: 'Errore nel server durante il login.' });
+  }
+});
+
+app.get('/api/profilo', autenticaToken, async (req, res) => {
+  try {
+    const utente = await User.findById(req.userId);
+    if (!utente) {
+      return res.status(404).json({ errore: 'Utente non trovato.' });
+    }
+    res.json({ email: utente.email, fotoProfilo: utente.fotoProfilo });
+  } catch (error) {
+    console.error('Errore recupero profilo:', error);
+    res.status(500).json({ errore: 'Impossibile recuperare il profilo.' });
+  }
+});
+
+app.put('/api/profilo', autenticaToken, async (req, res) => {
+  try {
+    const { fotoProfilo } = req.body;
+    if (!fotoProfilo) {
+      return res.status(400).json({ errore: 'Foto non specificata.' });
+    }
+
+    const utenteAggiornato = await User.findByIdAndUpdate(
+      req.userId,
+      { fotoProfilo },
+      { new: true }
+    );
+
+    res.json({ messaggio: 'Foto profilo aggiornata!', fotoProfilo: utenteAggiornato.fotoProfilo });
+  } catch (error) {
+    console.error('Errore aggiornamento foto profilo:', error);
+    res.status(500).json({ errore: 'Impossibile aggiornare la foto profilo.' });
   }
 });
 

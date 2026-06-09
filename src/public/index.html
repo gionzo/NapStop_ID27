@@ -27,7 +27,8 @@
     <button class="btn-cronologia-toggle" id="btnToggleCronologia" onclick="toggleCronologia()">Mostra Cronologia Viaggi</button>
     <button class="btn-preferiti-toggle" id="btnTogglePreferiti" onclick="togglePreferiti()">Mostra Preferiti</button>
     <button class="btn-logout" onclick="logout()">Esci / Cambia Account</button> 
-   
+
+<button class="btn-foto-toggle" onclick="apriModalFoto()">Modifica Foto Profilo</button>
     <div class="flex-container">
         <div class="panel-cronologia" id="panelCronologia">
             <h2>La tua Cronologia Viaggi</h2>
@@ -39,7 +40,16 @@
             <div id="preferitiContenuto">Nessun viaggio tra i preferiti.</div>
         </div>
     </div>
+    <div class="profilo-angolo" id="profiloAngolo" style="display: none;">
+    <div class="pallino-foto">
+        <img id="imgProfiloAngolo" src="avatar1.png" alt="Foto Profilo">
+    </div>
+    <div id="emailProfiloAngolo" class="email-utente"></div>
+</div>
 
+<div class="logo-angolo">
+    <img src="logo_napstop.png" alt="Logo NapStop">
+</div>
     <div class="logo-angolo">
         <img src="logo_napstop.png" alt="Logo NapStop">
     </div>
@@ -97,7 +107,20 @@
         <button class="btn-cancella-viaggio" onclick="cancellaViaggio()">Cancella Viaggio</button>
     </div>
 
-    <script src="script.js"></script>
+<div class="modal-overlay" id="modalFotoProfilo">
+    <div class="modal-box">
+        <button class="modal-close" onclick="chiudiModalFoto()">&times;</button>
+        <h2>Scegli la tua Foto Profilo</h2>
+        <div class="foto-grid">
+            <img src="avatar1.png" alt="Avatar 1" onclick="cambiaFotoProfilo('avatar1.png')">
+            <img src="avatar2.png" alt="Avatar 2" onclick="cambiaFotoProfilo('avatar2.png')">
+            <img src="avatar3.png" alt="Avatar 3" onclick="cambiaFotoProfilo('avatar3.png')">
+            <img src="avatar4.png" alt="Avatar 4" onclick="cambiaFotoProfilo('avatar4.png')">
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
    
 </body>
 </html>
