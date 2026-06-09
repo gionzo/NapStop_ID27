@@ -73,6 +73,17 @@
                     <option value="vibrazione">Solo Vibrazione</option>
                 </select>
             </div>
+
+            <div class="modal-section disabled" id="sec-suoneria">
+                <h3>Traccia Suoneria</h3>
+                <select id="select-suoneria" onchange="gestisciCascata()" disabled>
+                    <option value="">-- Seleziona MP3 --</option>
+                    <option value="suoneria1.mp3">Suoneria 1</option>
+                    <option value="suoneria2.mp3">Suoneria 2</option>
+                    <option value="suoneria3.mp3">Suoneria 3</option>
+                    <option value="suoneria4.mp3">Suoneria 4</option>
+                </select>
+            </div>
             
             <div class="modal-section section-conferma disabled" id="sec-conferma">
                 <button class="btn-conferma" id="btn-conferma-viaggio" onclick="confermaViaggio()" disabled>Conferma Viaggio</button>
