@@ -97,6 +97,7 @@ function initMap() {
         zoom: 12,
         center: coordinateTrento,
         streetViewControl: false,
+        mapTypeControl: false,
         styles: [
             { featureType: "poi", elementType: "all", stylers: [{ visibility: "off" }] },
             { featureType: "transit.station", elementType: "all", stylers: [{ visibility: "on" }, { weight: 2 }] },
@@ -830,5 +831,22 @@ document.addEventListener('DOMContentLoaded', () => {
         modalFoto.addEventListener('click', function(e) {
             if (e.target === this) chiudiModalFoto();
         });
+    }
+});
+
+function toggleMenu() {
+    document.getElementById('menuDropdown').classList.toggle('active');
+}
+
+
+document.addEventListener('click', function(event) {
+    const menuContainer = document.querySelector('.menu-container');
+    const menuDropdown = document.getElementById('menuDropdown');
+    
+    // Controlla che il clic non sia avvenuto dentro il menu
+    if (menuContainer && !menuContainer.contains(event.target)) {
+        if (menuDropdown.classList.contains('active')) {
+            menuDropdown.classList.remove('active');
+        }
     }
 });
