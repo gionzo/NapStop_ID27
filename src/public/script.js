@@ -18,7 +18,8 @@ window.onload = function() {
     if (localStorage.getItem('token')) {
         document.getElementById('authScreen').style.display = 'none';
         ottieniConfigurazioneEAvviaMappa();
-        caricaCronologia(); 
+        caricaCronologia();
+        caricaProfiloUtente(); 
     }
 }
 
@@ -67,6 +68,7 @@ function gestisciAutenticazione() {
             document.getElementById('authScreen').style.display = 'none';
             ottieniConfigurazioneEAvviaMappa();
             caricaCronologia(); 
+            caricaProfiloUtente();
         } else {
             alert("Registrazione completata! Ora effettua l'accesso.");
             cambiaModalitaAuth();
@@ -766,3 +768,67 @@ function logout() {
     localStorage.removeItem('token'); 
     location.reload(); 
 }
+
+function caricaProfiloUtente() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch('/api/profilo', {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Errore nel caricamento del profilo.");
+        return res.json();
+    })
+    .then(data => {
+        const nomePulito = data.email.split('@')[0];
+        
+        document.getElementById('imgProfiloAngolo').src = data.fotoProfilo;
+        document.getElementById('emailProfiloAngolo').innerText = nomePulito;
+        document.getElementById('profiloAngolo').style.display = 'flex';
+    })
+    .catch(err => console.error("Errore profilo:", err));
+}
+
+function apriModalFoto() {
+    document.getElementById('modalFotoProfilo').classList.add('active');
+}
+
+function chiudiModalFoto() {
+    document.getElementById('modalFotoProfilo').classList.remove('active');
+}
+
+function cambiaFotoProfilo(nomeFoto) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    fetch('/api/profilo', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ fotoProfilo: nomeFoto })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Errore durante il salvataggio della foto.");
+        return res.json();
+    })
+    .then(data => {
+        document.getElementById('imgProfiloAngolo').src = data.fotoProfilo;
+        chiudiModalFoto();
+    })
+    .catch(err => {
+        alert("Impossibile aggiornare la foto: " + err.message);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const modalFoto = document.getElementById('modalFotoProfilo');
+    if(modalFoto) {
+        modalFoto.addEventListener('click', function(e) {
+            if (e.target === this) chiudiModalFoto();
+        });
+    }
+});
