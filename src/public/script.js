@@ -12,6 +12,7 @@ let isLoginMode = true;
 let isViaggioAttivo = false; 
 let viajesCaricati = []; 
 let preferiti = [];      
+let audioAnteprima = null;
 
 window.onload = function() {
     if (localStorage.getItem('token')) {
@@ -230,6 +231,10 @@ function verificaArrivo(posUtente) {
 
 function eseguiSuoneriaForte(fileMp3) {
     try {
+        if (audioAnteprima) {
+            audioAnteprima.pause();
+            audioAnteprima = null;
+        }
         const audio = new Audio("suoneria/" + fileMp3);
         audio.play();
     } catch (e) {
@@ -273,6 +278,10 @@ function apriModal(nomeFermata, lat, lng) {
 }
 
 function chiudiModal() {
+    if (audioAnteprima) {
+        audioAnteprima.pause();
+        audioAnteprima = null;
+    }
     document.getElementById('modalConfigurazione').classList.remove('active');
 }
 
@@ -319,6 +328,11 @@ function gestisciCascata() {
     const selectSuoneria = document.getElementById('select-suoneria');
     const btnConferma = document.getElementById('btn-conferma-viaggio');
 
+    if (audioAnteprima) {
+        audioAnteprima.pause();
+        audioAnteprima = null;
+    }
+
     if (mezzo !== "") {
         secRaggio.classList.remove('disabled');
         selectRaggio.removeAttribute('disabled');
@@ -340,6 +354,15 @@ function gestisciCascata() {
     if (mezzo !== "" && raggio !== "" && notifica === "suoneria") {
         secSuoneria.classList.remove('disabled');
         selectSuoneria.removeAttribute('disabled');
+        
+        if (suoneria !== "") {
+            try {
+                audioAnteprima = new Audio("suoneria/" + suoneria);
+                audioAnteprima.play();
+            } catch (e) {
+                console.error("Impossibile riprodurre l'anteprima:", e);
+            }
+        }
     } else {
         secSuoneria.classList.add('disabled');
         selectSuoneria.setAttribute('disabled', 'true');
@@ -454,13 +477,13 @@ function confermaViaggio() {
         mappa.setZoom(14);
 
         const visualizzazioneNotifica = valoreNotifica === "suoneria" ? `${testoNotifica} (${testoSuoneria})` : testoNotifica;
-        const contenutowidget = `
+        const contenutoWidget = `
             <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
             <p><strong>Mezzo:</strong> ${testoMezzo}</p>
             <p><strong>Raggio sveglia:</strong> ${testoRaggio}</p>
             <p><strong>Tipo notifica:</strong> ${visualizzazioneNotifica}</p>
         `;
-        document.getElementById('widgetDati').innerHTML = contenutowidget;
+        document.getElementById('widgetDati').innerHTML = contenutoWidget;
         document.getElementById('widgetViaggio').classList.add('active');
 
         chiudiModal();
@@ -509,13 +532,13 @@ function ripristinaViaggioSalvato() {
     mappa.setZoom(14);
 
     const visualizzazioneNotifica = viaggio.notifica === "suoneria" ? `${viaggio.testoNotifica} (${viaggio.testoSuoneria})` : viaggio.testoNotifica;
-    const contenutowidget = `
+    const contenutoWidget = `
         <p><strong>Destinazione:</strong><br>${fermataCorrente}</p>
         <p><strong>Mezzo:</strong> ${viaggio.testoMezzo}</p>
         <p><strong>Raggio sveglia:</strong> ${viaggio.testoRaggio}</p>
         <p><strong>Tipo notifica:</strong> ${visualizzazioneNotifica}</p>
     `;
-    document.getElementById('widgetDati').innerHTML = contenutowidget;
+    document.getElementById('widgetDati').innerHTML = contenutoWidget;
     document.getElementById('widgetViaggio').classList.add('active');
 }
 
