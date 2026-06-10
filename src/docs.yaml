@@ -1,0 +1,356 @@
+openapi: 3.0.0
+info:
+  title: NapStop API
+  description: Documentazione ufficiale delle API per l'applicazione NapStop, un assistente di viaggio basato sulla geolocalizzazione.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Server di sviluppo locale
+
+paths:
+  /:
+    get:
+      summary: Serve la Web App (Frontend)
+      description: Restituisce l'interfaccia grafica (i file statici nella cartella `public`, a partire da `index.html`).
+      responses:
+        '200':
+          description: Pagina principale caricata correttamente.
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /api/signup:
+    post:
+      summary: Registra un nuovo utente
+      description: Crea un nuovo account utente crittografando la password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: utente@example.com
+                password:
+                  type: string
+                  format: password
+                  example: passwordSicura123
+      responses:
+        '201':
+          description: Registrazione completata con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messaggio:
+                    type: string
+                    example: Registrazione completata con successo!
+        '400':
+          description: Richiesta non valida (campi mancanti o email già registrata).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+        '500':
+          description: Errore interno del server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+
+  /api/login:
+    post:
+      summary: Effettua il login utente
+      description: Autentica l'utente e restituisce un JSON Web Token (JWT) valido per 24 ore.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: utente@example.com
+                password:
+                  type: string
+                  format: password
+                  example: passwordSicura123
+      responses:
+        '200':
+          description: Login effettuato con successo. Restituisce il token JWT.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messaggio:
+                    type: string
+                    example: Login effettuato con successo!
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '400':
+          description: Credenziali non valide o campi mancanti.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+        '500':
+          description: Errore interno del server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+
+  /api/viaggi:
+    get:
+      summary: Recupera la cronologia dei viaggi
+      description: Restituisce la lista di tutti i viaggi dell'utente autenticato, ordinati dal più recente.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista dei viaggi recuperata con successo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Viaggio'
+        '401':
+          description: Token mancante o non fornito.
+        '403':
+          description: Token non valido o scaduto.
+        '500':
+          description: Errore nel recupero della cronologia.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+
+    post:
+      summary: Salva un nuovo viaggio
+      description: Registra un nuovo viaggio associato all'utente autenticato.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destinazione
+                - mezzo
+                - raggio
+                - notifica
+              properties:
+                destinazione:
+                  type: string
+                  example: Stazione Centrale di Milano
+                lat:
+                  type: number
+                  format: float
+                  nullable: true
+                  example: 45.4858
+                lng:
+                  type: number
+                  format: float
+                  nullable: true
+                  example: 9.2043
+                mezzo:
+                  type: string
+                  example: treno
+                raggio:
+                  type: string
+                  example: 500m
+                notifica:
+                  type: string
+                  example: suono
+                suoneria:
+                  type: string
+                  nullable: true
+                  example: alarm.mp3
+                preferito:
+                  type: boolean
+                  default: false
+                  example: false
+      responses:
+        '201':
+          description: Viaggio salvato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messaggio:
+                    type: string
+                    example: Viaggio salvato nel database con successo!
+                  viaggio:
+                    $ref: '#/components/schemas/Viaggio'
+        '400':
+          description: Campi obbligatori mancanti.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+        '401':
+          description: Token mancante.
+        '403':
+          description: Token non valido.
+        '500':
+          description: Errore nel salvataggio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+
+  /api/viaggi/{id}:
+    put:
+      summary: Aggiorna lo stato "preferito" di un viaggio
+      description: Modifica il flag preferito di uno specifico viaggio appartenente all'utente autenticato.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID univoco del viaggio (MongoDB ObjectId)
+          schema:
+            type: string
+            example: 65c21f7b8f1a2c001f8b4567
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - preferito
+              properties:
+                preferito:
+                  type: boolean
+                  example: true
+      responses:
+        '200':
+          description: Stato preferito aggiornato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messaggio:
+                    type: string
+                    example: Stato preferito aggiornato con successo!
+                  viaggio:
+                    $ref: '#/components/schemas/Viaggio'
+        '400':
+          description: Parametro 'preferito' mancante nel corpo della richiesta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+        '401':
+          description: Token mancante.
+        '403':
+          description: Token non valido.
+        '404':
+          description: Viaggio non trovato o l'utente non è autorizzato a modificarlo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+        '500':
+          description: Errore interno del server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Errore'
+
+  /api-config:
+    get:
+      summary: Recupera la configurazione dell'applicazione
+      description: Restituisce le chiavi di configurazione necessarie al frontend (Google Maps API Key). Non richiede autenticazione.
+      responses:
+        '200':
+          description: Configurazione recuperata con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  apiKey:
+                    type: string
+                    example: AIzaSyYourKeyHere...
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Inserisci il token JWT ottenuto dal login nel formato `Bearer <token>`.
+
+  schemas:
+    Errore:
+      type: object
+      properties:
+        errore:
+          type: string
+          example: Messaggio descrittivo dell'errore verificatosi nel server.
+
+    Viaggio:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 65c21f7b8f1a2c001f8b4567
+        utenteId:
+          type: string
+          example: 65c21f7b8f1a2c001f8b1234
+        destinazione:
+          type: string
+          example: Stazione Centrale di Milano
+        lat:
+          type: number
+          format: float
+          nullable: true
+          example: 45.4858
+        lng:
+          type: number
+          format: float
+          nullable: true
+          example: 9.2043
+        mezzo:
+          type: string
+          example: treno
+        raggio:
+          type: string
+          example: 500m
+        notifica:
+          type: string
+          example: suono
+        suoneria:
+          type: string
+          nullable: true
+          example: alarm.mp3
+        preferito:
+          type: boolean
+          example: false
+        dataCreazione:
+          type: string
+          format: date-time
+          example: '2026-06-10T12:00:00.000Z'
